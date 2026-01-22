@@ -6,3 +6,12 @@ dist/
 .env.local
 .cursor
 .vscode
+.yarn
+target/
+*.node
+/src/native/rust/node_modules
+/src/native/rust/target
+/src/native/rust/*.node
+/src/native/rust/Cargo.lock
+/src/native/rust/index.js
+/src/native/rust/index.d.ts

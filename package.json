@@ -4,20 +4,30 @@
   "description": "Risk Analysis & Simulation API for performance validation",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "cd ./src/native/rust && yarn build && cd ../.. && tsc",
     "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
-    "watch": "tsc --watch"
+    "dev": "ts-node-dev --respawn --transpile-only --ignore-watch node_modules src/index.ts",
+    "watch": "tsc --watch",
+    "test:coverage": "vitest run --coverage",
+    "native:install": "cd ./src/native/rust && yarn install",
+    "native:build": "cd ./src/native/rust && yarn build",
+    "native:test": "cd ./src/native/rust && yarn test",
+    "copy-native": "shx mkdir -p ./dist/native && shx cp ./src/native/rust/index.js ./src/native/rust/index.d.ts ./src/native/rust/*.node ./dist/native/rust/"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "packageManager": "yarn@4.9.1",
   "dependencies": {
     "express": "^4.18.2",
+    "module-alias": "^2.2.3",
+    "shx": "^0.4.0",
+    "ts-node-dev": "^2.0.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
+    "@types/module-alias": "^2",
     "@types/node": "^20.10.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
