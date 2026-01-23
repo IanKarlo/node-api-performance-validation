@@ -1,5 +1,5 @@
 import './config/module-alias';
-import { sayHello } from '@native-rust';
+import { generateRiskReport, batchScoreAnalysis } from '@native-rust';
 
 import express, { Express, Request, Response } from 'express';
 import riskRoutes from './routes/riskRoutes';
@@ -24,7 +24,7 @@ app.use((err: Error, req: Request, res: Response, next: any) => {
 });
 
 app.listen(PORT, () => {
-  console.log(sayHello());
+  console.log();
   console.log(`Server is running on port ${PORT}`);
   console.log(`Health check: http://${HOST}:${PORT}/health`);
   console.log(`Risk report: POST http://${HOST}:${PORT}/risk/report`);
