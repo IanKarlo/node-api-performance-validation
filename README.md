@@ -1,17 +1,19 @@
-# Validação de Performance da API Node
+# Validação de Performance de API Node
 
-API de Análise de Risco e Simulação para validação de performance e benchmarking.
+API de Análise de Risco e Simulação para validação de performance e benchmarking com implementações em TypeScript e Rust.
 
 ## Visão Geral
 
-Esta API fornece um mecanismo de análise de risco e simulação para clientes e veículos, projetado para suportar cargas de trabalho intensivas em CPU e memória. Serve como linha de base para implementações comparativas (Node.js Puro vs. Node.js + Rust/Zig).
+Esta API fornece mecanismos de análise de risco e simulação para clientes e veículos, projetada para suportar cargas de trabalho intensivas em CPU e memória. Ela serve como base para implementações comparativas, com versões em TypeScript (Node.js) e Rust disponíveis para benchmarking.
 
 ## Funcionalidades
 
-- **Consolidação de Histórico:** Consolidar histórico de eventos para um cliente/veículo
-- **Derivação de Características:** Derivar vetores de características do histórico
-- **Cálculo de Pontuação:** Calcular pontuações de risco usando um modelo linear
-- **Simulação Monte Carlo:** Simular cenários futuros para estimar probabilidade de perda e valor esperado
+- **Consolidação de Histórico:** Consolida o histórico de eventos para um par cliente/veículo.
+- **Derivação de Características:** Deriva vetores de características a partir de dados históricos.
+- **Pontuação de Risco:** Calcula pontuações de risco usando um modelo linear.
+- **Simulação de Monte Carlo:** Simula cenários futuros para estimar a probabilidade de perda e o valor esperado.
+- **Análise (Analytics):** Gera resumos analíticos do histórico do cliente.
+- **Processamento em Lote:** Calcula pontuações de risco para grandes lotes de perfis.
 
 ## Instalação
 
@@ -19,42 +21,46 @@ Esta API fornece um mecanismo de análise de risco e simulação para clientes e
 npm install
 ```
 
-## Compilar
+## Build (Compilação)
 
 ```bash
+# Compilar ambas as implementações TypeScript e Rust
 npm run build
+
+# Compilar apenas o módulo nativo Rust
+npm run native:build
 ```
 
-## Executar
+## Execução
 
 ```bash
-# Modo desenvolvimento (com ts-node)
+# Modo de desenvolvimento (com ts-node)
 npm run dev
 
-# Modo desenvolvimento com implementação TypeScript (padrão)
+# Desenvolvimento com a implementação TypeScript (padrão)
 npm run dev:ts
 
-# Modo desenvolvimento com implementação Rust
+# Desenvolvimento com a implementação Rust
 npm run dev:rs
 
-# Modo produção (após compilação)
+# Modo de produção (após a compilação)
 npm start
 ```
 
-### Seleção de Modelo de Linguagem
+### Seleção do Modelo de Linguagem
 
-A API suporta tanto implementações em TypeScript quanto Rust para comparação de performance. Use a variável de ambiente `LANG_MODEL` para escolher:
+A API suporta implementações tanto em TypeScript quanto em Rust para comparação de performance. Use a variável de ambiente `LANG_MODEL` para escolher:
 
-- `LANG_MODEL=TS` (padrão): Usar implementações TypeScript
-- `LANG_MODEL=RS`: Usar implementações Rust (requer módulo nativo compilado)
+- `LANG_MODEL=TS` (padrão): Usa as implementações TypeScript.
+- `LANG_MODEL=RS`: Usa as implementações Rust (requer o módulo nativo compilado).
 
 ```bash
-# Definir variável de ambiente e executar
+# Configurar variável de ambiente e executar
 LANG_MODEL=RS npm run dev
 
-# Ou usar os scripts de conveniência
-npm run dev:rs  # Usa Rust
-npm run dev:ts  # Usa TypeScript (explícito)
+# Ou use os scripts de conveniência
+npm run dev:rs  # Usar Rust
+npm run dev:ts  # Usar TypeScript (explícito)
 ```
 
 ## Endpoints da API
@@ -128,7 +134,7 @@ Calcula pontuações de risco para um lote de perfis.
 
 Retorna um resumo analítico do histórico do cliente.
 
-**Nota:** Atualmente apenas implementação TypeScript disponível.
+**Disponível em ambas as implementações:** TypeScript e Rust.
 
 **Resposta:**
 ```json
@@ -155,17 +161,18 @@ Retorna um resumo analítico do histórico do cliente.
 
 ## Arquitetura
 
-O sistema segue uma arquitetura modular:
+O sistema segue uma arquitetura modular com implementações tanto em TypeScript quanto em Rust:
 
-- **Camada HTTP** (`src/routes/`): Rotas Express.js e tratamento de requisições
-- **Camada de Computação** (`src/computation/`): Lógica de negócio principal (geração de histórico, derivação de características, pontuação, simulação)
-- **Serviços** (`src/services/`): Camada de acesso a dados (atualmente implementações mock)
-- **Tipos** (`src/types/`): Definições de tipos TypeScript
+- **Camada HTTP** (`src/routes/`): Rotas Express.js e tratamento de requisições.
+- **Camada de Computação** (`src/computation/`): Lógica de negócio central (geração de histórico, derivação de características, pontuação, simulação).
+- **Camada Nativa** (`src/native/rust/`): Implementações Rust de alta performance usando napi-rs.
+- **Serviços** (`src/services/`): Camada de acesso a dados (atualmente implementações simuladas/mocks).
+- **Tipos** (`src/types/`): Definições de tipo TypeScript.
 
-Esta separação permite que os módulos de computação sejam facilmente substituídos por módulos nativos Rust/Zig em futuras iterações.
+O design modular permite a alternância contínua entre as implementações TypeScript e Rust para benchmarking de performance.
 
 ## Características de Performance
 
-- **Intensivo em Memória:** Operações de geração e agregação de histórico
-- **Intensivo em CPU:** Operações de simulação Monte Carlo e pontuação em lote
-- **Escalável:** Projetado para lidar com grandes cargas de trabalho (até 1M eventos, 10M iterações de simulação)
+- **Intensivo em Memória:** Operações de geração e agregação de histórico.
+- **Intensivo em CPU:** Operações de simulação Monte Carlo e pontuação em lote.
+- **Escalável:** Projetado para lidar com grandes cargas de trabalho (até 1M eventos, 10M iterações de simulação).
