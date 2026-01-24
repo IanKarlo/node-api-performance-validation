@@ -4,17 +4,6 @@ use crate::types::{RiskEvent, AnalyticsSummary, TemporalAggregation};
 pub fn calculate_customer_analytics(
     events: &[RiskEvent],
 ) -> AnalyticsSummary {
-    // We use a fixed "now" or the latest event time to be consistent with generation,
-    // but typically "now" is the current time.
-    // In history.rs we used a fixed 1706000000000.0 (Jan 23 2024).
-    // Let's use the same or derive from system if we want dynamic.
-    // For consistency with history generation in Rust which uses a fixed end time,
-    // we should use that same reference or simply SystemTime.
-    // However, the TS implementation uses new Date(), so it's dynamic.
-    // If we want to be comparable, we should probably use SystemTime::now().
-    // But since history generation in Rust uses a hardcoded "now", let's use that to ensure we capture the events "last month/year".
-    
-    // history.rs: let now = 1706000000000.0;
     let now = 1706000000000.0; 
     
     let one_month_ago = now - 30.0 * 24.0 * 60.0 * 60.0 * 1000.0;
@@ -45,9 +34,6 @@ pub fn calculate_customer_analytics(
 
     let mut average_time_between_events_days = 0.0;
     if timestamps.len() > 1 {
-        // Events are already sorted in history.rs, but let's ensure or just sort.
-        // timestamps.sort_by(|a, b| a.partial_cmp(b).unwrap()); 
-        // We will assume they are not guaranteed sorted if passed from outside, so sort.
         timestamps.sort_by(|a, b| a.partial_cmp(b).unwrap());
         
         let mut total_diff = 0.0;

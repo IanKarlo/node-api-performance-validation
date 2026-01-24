@@ -6,11 +6,8 @@ pub fn generate_history(
     rng: &mut SeededRandom,
 ) -> Vec<RiskEvent> {
     let mut events = Vec::with_capacity(history_size as usize);
-    
-    // Fixed "now" for consistency or use SystemTime
-    let now = 1706000000000.0; // Approx timestamp (Jan 23 2024) - or use dynamic
-    // To match TS Date.now(), we'd ideally use SystemTime, but fixed is fine for benchmark
-    // let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64;
+
+    let now = 1706000000000.0;
     
     let one_year_ago = now - 365.0 * 24.0 * 60.0 * 60.0 * 1000.0;
     
@@ -51,7 +48,7 @@ pub fn derive_features(
     events: &[RiskEvent],
     customer: &Customer,
     vehicle: &Vehicle,
-    rng: &mut SeededRandom, // passed to handle the random logic in HEAVY_USE
+    rng: &mut SeededRandom,
 ) -> FeatureVector {
     let mut severe_fines = 0;
     let mut medium_fines = 0;
@@ -75,7 +72,6 @@ pub fn derive_features(
             "MAINTENANCE" => maintenance_count += 1,
             "HEAVY_USE" => {
                 heavy_use_count += 1;
-                // TS: totalKm += 100 + Math.random() * 500;
                 total_km += 100.0 + rng.next() * 500.0;
             },
             _ => {}
@@ -83,10 +79,8 @@ pub fn derive_features(
     }
     
     total_km += vehicle.estimated_mileage;
-    
-    // vehicleAge = currentYear - vehicle.year
-    // Assuming currentYear is somewhat fixed or derived from system
-    let current_year = 2026; // From user prompt "Today's date is ... 2026"
+
+    let current_year = 2026;
     let vehicle_age = current_year - vehicle.year;
     
     

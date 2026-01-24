@@ -4,11 +4,7 @@ pub struct SeededRandom {
 
 impl SeededRandom {
   pub fn new(seed: Option<f64>) -> Self {
-    let s = seed.unwrap_or_else(|| {
-      // Fallback to time-based seed if not provided (simplified)
-      // In a real scenario we'd use system time, but for now fixed or simple
-      12345.0 
-    });
+    let s = seed.unwrap_or(12345.0);
     SeededRandom { seed: s }
   }
 

@@ -40,9 +40,6 @@ const batchScoreSchema = z.object({
  * Generate full risk report for a customer/vehicle pair
  */
 router.post('/report', async (req: Request, res: Response) => {
-
-  console.log('rustfunctions', rustFunctions);
-
   try {
     const body = riskReportSchema.parse(req.body) as RiskReportRequest;
 
