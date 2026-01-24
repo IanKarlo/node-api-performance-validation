@@ -6,7 +6,9 @@
   "scripts": {
     "build": "cd ./src/native/rust && yarn build && cd ../.. && tsc",
     "start": "node dist/index.js",
-    "dev": "ts-node-dev --respawn --transpile-only --ignore-watch node_modules src/index.ts",
+    "dev": "ts-node-dev --stack-size=8192 --respawn --transpile-only --ignore-watch node_modules src/index.ts",
+    "dev:ts": "LANG_MODEL=TS yarn dev",
+    "dev:rs": "LANG_MODEL=RS yarn dev",
     "watch": "tsc --watch",
     "test:coverage": "vitest run --coverage",
     "native:install": "cd ./src/native/rust && yarn install",

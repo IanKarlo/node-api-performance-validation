@@ -67,3 +67,20 @@ pub struct BatchScoreStats {
   pub min: f64,
   pub max: f64,
 }
+
+#[napi(object)]
+#[derive(Clone, Debug)]
+pub struct TemporalAggregation {
+  pub last_month: i32,
+  pub last_quarter: i32,
+  pub last_year: i32,
+}
+
+#[napi(object)]
+#[derive(Clone, Debug)]
+pub struct AnalyticsSummary {
+  pub total_events: i32,
+  pub events_by_category: std::collections::HashMap<String, i32>,
+  pub temporal_aggregation: TemporalAggregation,
+  pub average_time_between_events_days: f64,
+}

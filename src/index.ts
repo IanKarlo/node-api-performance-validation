@@ -1,5 +1,4 @@
 import './config/module-alias';
-import { generateRiskReport, batchScoreAnalysis } from '@native-rust';
 
 import express, { Express, Request, Response } from 'express';
 import riskRoutes from './routes/riskRoutes';

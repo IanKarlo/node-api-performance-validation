@@ -8,9 +8,22 @@ pub mod random;
 pub mod scoring;
 pub mod simulation;
 pub mod history;
+pub mod analytics;
 
-use types::{RiskReportResponse, Customer, Vehicle, BatchScoreStats, FeatureVector};
+use types::{RiskReportResponse, Customer, Vehicle, BatchScoreStats, FeatureVector, AnalyticsSummary};
 use random::SeededRandom;
+
+#[napi]
+pub fn analyze_customer_history(
+  _customer_id: String,
+  _vehicle_id: String,
+  history_size: u32,
+  seed: Option<f64>,
+) -> AnalyticsSummary {
+  let mut rng = SeededRandom::new(seed);
+  let events = history::generate_history(history_size, &mut rng);
+  analytics::calculate_customer_analytics(&events)
+}
 
 #[napi]
 pub fn generate_risk_report(

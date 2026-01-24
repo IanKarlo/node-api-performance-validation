@@ -31,8 +31,30 @@ npm run build
 # Modo desenvolvimento (com ts-node)
 npm run dev
 
+# Modo desenvolvimento com implementação TypeScript (padrão)
+npm run dev:ts
+
+# Modo desenvolvimento com implementação Rust
+npm run dev:rs
+
 # Modo produção (após compilação)
 npm start
+```
+
+### Seleção de Modelo de Linguagem
+
+A API suporta tanto implementações em TypeScript quanto Rust para comparação de performance. Use a variável de ambiente `LANG_MODEL` para escolher:
+
+- `LANG_MODEL=TS` (padrão): Usar implementações TypeScript
+- `LANG_MODEL=RS`: Usar implementações Rust (requer módulo nativo compilado)
+
+```bash
+# Definir variável de ambiente e executar
+LANG_MODEL=RS npm run dev
+
+# Ou usar os scripts de conveniência
+npm run dev:rs  # Usa Rust
+npm run dev:ts  # Usa TypeScript (explícito)
 ```
 
 ## Endpoints da API
@@ -105,6 +127,8 @@ Calcula pontuações de risco para um lote de perfis.
 ### GET /analytics/customer/:id/summary
 
 Retorna um resumo analítico do histórico do cliente.
+
+**Nota:** Atualmente apenas implementação TypeScript disponível.
 
 **Resposta:**
 ```json

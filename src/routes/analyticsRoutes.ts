@@ -1,12 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { generateHistory } from '../computation/history';
 import { calculateCustomerAnalytics } from '../computation/analytics';
-import { CustomerService } from '../services/customerService';
-import { VehicleService } from '../services/vehicleService';
+import { getLangModelConfig, logLangModelUsage } from '../config/lang-model';
 
 const router = Router();
-const customerService = new CustomerService();
-const vehicleService = new VehicleService();
 
 /**
  * GET /analytics/customer/:id/summary
@@ -21,10 +18,25 @@ router.get('/customer/:id/summary', async (req: Request, res: Response) => {
       return;
     }
 
-    const customer = customerService.getCustomer(customerId);
-
-    const historySize = 50000;
+    logLangModelUsage(req.path);
+    const config = getLangModelConfig();
     const vehicleId = `vehicle-${customerId}`;
+    const historySize = 50000;
+
+    if (config.useRust) {
+      try {
+        const { analyzeCustomerHistory } = require('@native-rust');
+        const summary = analyzeCustomerHistory(customerId, vehicleId, historySize, undefined);
+        res.json({
+          customerId,
+          summary,
+        });
+        return;
+      } catch (e) {
+        console.error('Failed to execute Rust implementation, falling back to TS', e);
+        // Fallback continues below
+      }
+    }
 
     const events = generateHistory(customerId, vehicleId, historySize);
 
