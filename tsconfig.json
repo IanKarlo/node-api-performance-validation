@@ -16,7 +16,8 @@
     "sourceMap": true,
     "paths": {
       "@/*": ["./*"],
-      "@native-rust": ["./src/native/rust/index.d.ts"]
+      "@native-rust": ["./src/native/rust/index.d.ts"],
+      "@native-zig": ["./src/native/zig/index.d.ts"]
     }
   },
   "include": ["src/**/*"],

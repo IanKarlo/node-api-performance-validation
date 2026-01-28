@@ -9,3 +9,4 @@ if (process.env.TS_NODE_DEV === undefined && process.env.NODE_ENV !== 'test') {
 
 addAlias('@', resolve(folder))
 addAlias('@native-rust', resolve(folder, 'native', 'rust', 'index.js'))
+addAlias('@native-zig', resolve(folder, 'native', 'zig', 'index.js'))

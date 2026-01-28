@@ -13,5 +13,6 @@ target/
 /src/native/rust/target
 /src/native/rust/*.node
 /src/native/rust/Cargo.lock
-/src/native/rust/index.js
-/src/native/rust/index.d.ts
+.zig-cache/
+.zig-out/
+zig-out/

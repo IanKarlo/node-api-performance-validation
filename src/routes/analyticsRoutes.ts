@@ -23,9 +23,15 @@ router.get('/customer/:id/summary', async (req: Request, res: Response) => {
     const vehicleId = `vehicle-${customerId}`;
     const historySize = 50000;
 
-    if (config.useRust) {
+    if (config.useRust || config.useZig) {
       try {
-        const { analyzeCustomerHistory } = require('@native-rust');
+        let analyzeCustomerHistory;
+        if (config.useRust) {
+          analyzeCustomerHistory = require('@native-rust').analyzeCustomerHistory;
+        } else {
+          analyzeCustomerHistory = require('@native-zig').analyzeCustomerHistory;
+        }
+
         const summary = analyzeCustomerHistory(customerId, vehicleId, historySize, undefined);
         res.json({
           customerId,
@@ -33,7 +39,7 @@ router.get('/customer/:id/summary', async (req: Request, res: Response) => {
         });
         return;
       } catch (e) {
-        console.error('Failed to execute Rust implementation, falling back to TS', e);
+        console.error('Failed to execute native implementation, falling back to TS', e);
         // Fallback continues below
       }
     }

@@ -5,7 +5,7 @@ const SeededRandom = @import("random.zig").SeededRandom;
 pub fn monteCarloSimulation(allocator: std.mem.Allocator, score: f64, iterations: u32, seed: ?f64) !types.SimulationResult {
     var rng = SeededRandom.init(seed);
     var losses = try std.ArrayList(f64).initCapacity(allocator, iterations);
-    defer losses.deinit();
+    defer losses.deinit(allocator);
 
     var total_loss: f64 = 0.0;
     var loss_count: u32 = 0;

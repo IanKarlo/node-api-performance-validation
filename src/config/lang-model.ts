@@ -1,14 +1,16 @@
 /**
  * Language Model Configuration
- * Controls whether to use Rust or TypeScript implementations
+ * Controls whether to use Rust, Zig, or TypeScript implementations
  */
 
-export type LangModel = 'TS' | 'RS';
+export type LangModel = 'TS' | 'RS' | 'ZG';
 
 export interface LangModelConfig {
   model: LangModel;
   useRust: boolean;
+  useZig: boolean;
   rustAvailable: boolean;
+  zigAvailable: boolean;
 }
 
 /**
@@ -17,11 +19,19 @@ export interface LangModelConfig {
 export function getLangModelConfig(): LangModelConfig {
   const model = (process.env.LANG_MODEL as LangModel) || 'TS';
 
-  if (model !== 'TS' && model !== 'RS') {
+  // Validate model value
+  if (model !== 'TS' && model !== 'RS' && model !== 'ZG') {
     console.warn(`Invalid LANG_MODEL value: ${model}. Defaulting to 'TS'`);
-    return { model: 'TS', useRust: false, rustAvailable: false };
+    return {
+      model: 'TS',
+      useRust: false,
+      useZig: false,
+      rustAvailable: false,
+      zigAvailable: false,
+    };
   }
 
+  // Check Rust availability
   let rustAvailable = false;
   if (model === 'RS') {
     try {
@@ -34,10 +44,25 @@ export function getLangModelConfig(): LangModelConfig {
     }
   }
 
+  // Check Zig availability
+  let zigAvailable = false;
+  if (model === 'ZG') {
+    try {
+      // Test if Zig module can be loaded
+      require('@native-zig');
+      zigAvailable = true;
+    } catch (error) {
+      console.warn('Zig native module not available, falling back to TypeScript implementation');
+      zigAvailable = false;
+    }
+  }
+
   return {
     model,
     useRust: model === 'RS' && rustAvailable,
+    useZig: model === 'ZG' && zigAvailable,
     rustAvailable,
+    zigAvailable,
   };
 }
 
@@ -46,6 +71,11 @@ export function getLangModelConfig(): LangModelConfig {
  */
 export function logLangModelUsage(endpoint: string): void {
   const config = getLangModelConfig();
-  const implementation = config.useRust ? 'Rust' : 'TypeScript';
+  let implementation = 'TypeScript';
+  if (config.useRust) {
+    implementation = 'Rust';
+  } else if (config.useZig) {
+    implementation = 'Zig';
+  }
   console.log(`[${endpoint}] Using ${implementation} implementation (LANG_MODEL=${config.model})`);
 }

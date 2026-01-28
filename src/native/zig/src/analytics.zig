@@ -24,7 +24,7 @@ pub fn calculateCustomerAnalytics(
     var last_year_count: i32 = 0;
 
     var timestamps = try std.ArrayList(f64).initCapacity(allocator, events.len);
-    defer timestamps.deinit();
+    defer timestamps.deinit(allocator);
 
     for (events) |event| {
         const result = try events_by_category.getOrPut(event.event_type);

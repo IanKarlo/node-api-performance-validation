@@ -10,11 +10,13 @@ import { CustomerService } from '../services/customerService';
 import { VehicleService } from '../services/vehicleService';
 import { getLangModelConfig, logLangModelUsage } from '../config/lang-model';
 
-// Conditional import for Rust functions
-let rustFunctions: any = null;
+// Conditional import for native functions (Rust or Zig)
+let nativeFunctions: any = null;
 const config = getLangModelConfig();
 if (config.useRust) {
-  rustFunctions = require('@native-rust');
+  nativeFunctions = require('@native-rust');
+} else if (config.useZig) {
+  nativeFunctions = require('@native-zig');
 }
 
 const router = Router();
@@ -49,10 +51,10 @@ router.post('/report', async (req: Request, res: Response) => {
 
     let response: any;
 
-    if (config.useRust) {
-      // Use Rust implementation
+    if (config.useRust || config.useZig) {
+      // Use native implementation (Rust or Zig)
       logLangModelUsage('POST /risk/report');
-      response = rustFunctions.generateRiskReport(
+      response = nativeFunctions.generateRiskReport(
         body.customerId,
         body.vehicleId,
         body.historySize,
@@ -109,21 +111,23 @@ router.post('/batch-score', async (req: Request, res: Response) => {
 
     let response: any;
 
-    if (config.useRust) {
-      // Use Rust implementation
+    if (config.useRust || config.useZig) {
+      // Use native implementation (Rust or Zig)
       logLangModelUsage('POST /risk/batch-score');
-      const rustStats = rustFunctions.batchScoreAnalysis(
+      const nativeStats = nativeFunctions.batchScoreAnalysis(
         body.count,
         body.seed || null
       );
 
+      // Note: Zig returns camelCase (meanScore), Rust returns snake_case (mean_score)
+      // Handle both formats for compatibility
       response = {
         totalProcessed: body.count,
         statistics: {
-          meanScore: rustStats.mean_score,
-          stdDev: rustStats.std_dev,
-          min: rustStats.min,
-          max: rustStats.max,
+          meanScore: nativeStats.meanScore ?? nativeStats.mean_score,
+          stdDev: nativeStats.stdDev ?? nativeStats.std_dev,
+          min: nativeStats.min,
+          max: nativeStats.max,
         },
       };
     } else {
