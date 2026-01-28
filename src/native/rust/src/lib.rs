@@ -36,17 +36,13 @@ pub fn generate_risk_report(
   vehicle: Vehicle,
 ) -> RiskReportResponse {
   let mut rng = SeededRandom::new(seed);
-  
-  // 1. History Generation
+
   let events = history::generate_history(history_size, &mut rng);
-  
-  // 2. Aggregation & 3. Feature Derivation
+
   let features = history::derive_features(&events, &customer, &vehicle, &mut rng);
-  
-  // 4. Score Calculation
+
   let score = scoring::calculate_score(&features);
-  
-  // 5. Simulation
+
   let simulation = simulation::monte_carlo_simulation(score, simulation_iterations, seed);
   
   RiskReportResponse {

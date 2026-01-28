@@ -32,7 +32,6 @@ pub fn monteCarloSimulation(allocator: std.mem.Allocator, score: f64, iterations
     const loss_probability = @as(f64, @floatFromInt(loss_count)) / @as(f64, @floatFromInt(iterations));
     const expected_loss = total_loss / @as(f64, @floatFromInt(iterations));
 
-    // Sort losses to find percentiles
     std.sort.block(f64, losses.items, {}, std.sort.asc(f64));
 
     const idx_2_5 = @as(usize, @intFromFloat(@floor(@as(f64, @floatFromInt(iterations)) * 0.025)));

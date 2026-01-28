@@ -40,7 +40,6 @@ router.get('/customer/:id/summary', async (req: Request, res: Response) => {
         return;
       } catch (e) {
         console.error('Failed to execute native implementation, falling back to TS', e);
-        // Fallback continues below
       }
     }
 

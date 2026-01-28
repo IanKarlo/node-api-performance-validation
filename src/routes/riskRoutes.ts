@@ -10,7 +10,6 @@ import { CustomerService } from '../services/customerService';
 import { VehicleService } from '../services/vehicleService';
 import { getLangModelConfig, logLangModelUsage } from '../config/lang-model';
 
-// Conditional import for native functions (Rust or Zig)
 let nativeFunctions: any = null;
 const config = getLangModelConfig();
 if (config.useRust) {
@@ -45,14 +44,12 @@ router.post('/report', async (req: Request, res: Response) => {
   try {
     const body = riskReportSchema.parse(req.body) as RiskReportRequest;
 
-    // Get customer and vehicle data (needed for both implementations)
     const customer = customerService.getCustomer(body.customerId);
     const vehicle = vehicleService.getVehicle(body.vehicleId);
 
     let response: any;
 
     if (config.useRust || config.useZig) {
-      // Use native implementation (Rust or Zig)
       logLangModelUsage('POST /risk/report');
       response = nativeFunctions.generateRiskReport(
         body.customerId,
@@ -64,7 +61,6 @@ router.post('/report', async (req: Request, res: Response) => {
         vehicle
       );
     } else {
-      // Use TypeScript implementation
       logLangModelUsage('POST /risk/report');
       const events = generateHistory(
         body.customerId,
@@ -112,15 +108,12 @@ router.post('/batch-score', async (req: Request, res: Response) => {
     let response: any;
 
     if (config.useRust || config.useZig) {
-      // Use native implementation (Rust or Zig)
       logLangModelUsage('POST /risk/batch-score');
       const nativeStats = nativeFunctions.batchScoreAnalysis(
         body.count,
         body.seed || null
       );
 
-      // Note: Zig returns camelCase (meanScore), Rust returns snake_case (mean_score)
-      // Handle both formats for compatibility
       response = {
         totalProcessed: body.count,
         statistics: {
@@ -131,7 +124,6 @@ router.post('/batch-score', async (req: Request, res: Response) => {
         },
       };
     } else {
-      // Use TypeScript implementation
       logLangModelUsage('POST /risk/batch-score');
       const featureVectors = [];
       const rng = body.seed !== undefined ?

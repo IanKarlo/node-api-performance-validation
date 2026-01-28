@@ -12,12 +12,6 @@ pub fn calculateCustomerAnalytics(
     const one_year_ago = now - 365.0 * 24.0 * 60.0 * 60.0 * 1000.0;
 
     var events_by_category = std.StringHashMap(i32).init(allocator);
-    // Don't defer deinit here, we might want to return it or move it.
-    // However, the AnalyticsSummary struct definition in types.zig uses StringHashMap.
-    // The caller will need to deinit this map if they consume the struct, or we just use it to build the result.
-    // In our case, we will convert this map to a JS object in main.zig, so we should allow it to live
-    // until then, OR we define a struct that main.zig can use.
-    // The `types.AnalyticsSummary` has `events_by_category: std.StringHashMap(i32)`.
 
     var last_month_count: i32 = 0;
     var last_quarter_count: i32 = 0;

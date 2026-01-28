@@ -10,7 +10,6 @@ pub const SeededRandom = struct {
     }
 
     pub fn next(self: *SeededRandom) f64 {
-        // Rust: (self.seed * 9301.0 + 49297.0) % 233280.0;
         const new_seed = @mod((self.seed * 9301.0 + 49297.0), 233280.0);
         self.seed = new_seed;
         return self.seed / 233280.0;

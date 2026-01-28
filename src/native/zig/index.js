@@ -15,7 +15,6 @@ try {
     addon = require(addonPath);
 } catch (err) {
     try {
-        // Fallback to a generic .node if the platform-specific extension failed
         addon = require(path.join(__dirname, 'zig-out', 'lib', 'addon.node'));
     } catch (e) {
         throw new Error(`Could not load Zig native module. Ensure it is built (zig build). Path: ${addonPath}. Error: ${err.message}`);

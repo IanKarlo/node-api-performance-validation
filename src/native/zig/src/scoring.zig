@@ -2,15 +2,15 @@ const std = @import("std");
 const types = @import("types.zig");
 
 const WEIGHTS = [_]f64{
-    0.15,   // severeFines
-    0.08,   // mediumFines
-    0.0001, // totalKm (normalized)
-    0.12,   // latePayments
-    0.05,   // customerAge (normalized)
-    0.03,   // vehicleAge
-    0.25,   // accidents
-    -0.02,  // maintenanceCount
-    -0.01,  // heavyUseCount
+    0.15,
+    0.08,
+    0.0001,
+    0.12,
+    0.05,
+    0.03,
+    0.25,
+    -0.02,
+    -0.01,
 };
 
 const BIAS: f64 = 0.5;

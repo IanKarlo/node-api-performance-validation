@@ -4,7 +4,6 @@ const SeededRandom = @import("random.zig").SeededRandom;
 
 pub fn generateHistory(allocator: std.mem.Allocator, history_size: u32, rng: *SeededRandom) !std.ArrayList(types.RiskEvent) {
     var events = try std.ArrayList(types.RiskEvent).initCapacity(allocator, history_size);
-    // Don't defer events.deinit() here because we want to return it. Caller owns it.
 
     const now = 1706000000000.0;
     const one_year_ago = now - 365.0 * 24.0 * 60.0 * 60.0 * 1000.0;
@@ -39,7 +38,6 @@ pub fn generateHistory(allocator: std.mem.Allocator, history_size: u32, rng: *Se
         });
     }
 
-    // Sort by timestamp
     const sort = struct {
         pub fn lessThan(_: void, lhs: types.RiskEvent, rhs: types.RiskEvent) bool {
             return lhs.timestamp < rhs.timestamp;

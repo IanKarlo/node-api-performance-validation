@@ -80,13 +80,12 @@ fn getType(env: c.napi_env, value: c.napi_value) c.napi_valuetype {
 fn jsToCustomer(env: c.napi_env, obj: c.napi_value, allocator: std.mem.Allocator) !types.Customer {
     const id = try getString(env, getNamedProp(env, obj, "id"), allocator);
     const age = getInt32(env, getNamedProp(env, obj, "age"));
-    const rel_years = getInt32(env, getNamedProp(env, obj, "relationshipYears")); // Note camelCase in JS
-    
-    // Payment History Array
+    const rel_years = getInt32(env, getNamedProp(env, obj, "relationshipYears"));
+
     const payment_history_js = getNamedProp(env, obj, "paymentHistory");
     var len: u32 = 0;
     check(c.napi_get_array_length(env, payment_history_js, &len));
-    
+
     var payment_history = try allocator.alloc(f64, len);
     var i: u32 = 0;
     while (i < len) : (i += 1) {
@@ -149,12 +148,12 @@ fn simulationResultToJs(env: c.napi_env, res: types.SimulationResult) c.napi_val
     const obj = createObject(env);
     setNamedProp(env, obj, "lossProbability", createDouble(env, res.loss_probability));
     setNamedProp(env, obj, "expectedLoss", createDouble(env, res.expected_loss));
-    
+
     var js_arr: c.napi_value = undefined;
     check(c.napi_create_array_with_length(env, 2, &js_arr));
     check(c.napi_set_element(env, js_arr, 0, createDouble(env, res.confidence_interval_95[0])));
     check(c.napi_set_element(env, js_arr, 1, createDouble(env, res.confidence_interval_95[1])));
-    
+
     setNamedProp(env, obj, "confidenceInterval95", js_arr);
     return obj;
 }
@@ -162,29 +161,24 @@ fn simulationResultToJs(env: c.napi_env, res: types.SimulationResult) c.napi_val
 fn analyticsSummaryToJs(env: c.napi_env, summary: types.AnalyticsSummary) c.napi_value {
     const obj = createObject(env);
     setNamedProp(env, obj, "totalEvents", createInt32(env, summary.total_events));
-    
-    // eventsByCategory
+
     const cat_obj = createObject(env);
     var it = summary.events_by_category.iterator();
     while (it.next()) |entry| {
-        // Need to zero-terminate string for setNamedProp, or use napi_set_property with createString
-        // keys in events_by_category are slices from RiskEvents which are static strings or allocated.
-        // We need to create a JS string key.
         const key_str = createString(env, entry.key_ptr.*);
         const val_num = createInt32(env, entry.value_ptr.*);
         check(c.napi_set_property(env, cat_obj, key_str, val_num));
     }
     setNamedProp(env, obj, "eventsByCategory", cat_obj);
-    
-    // temporalAggregation
+
     const temp_obj = createObject(env);
     setNamedProp(env, temp_obj, "lastMonth", createInt32(env, summary.temporal_aggregation.last_month));
     setNamedProp(env, temp_obj, "lastQuarter", createInt32(env, summary.temporal_aggregation.last_quarter));
     setNamedProp(env, temp_obj, "lastYear", createInt32(env, summary.temporal_aggregation.last_year));
     setNamedProp(env, obj, "temporalAggregation", temp_obj);
-    
+
     setNamedProp(env, obj, "averageTimeBetweenEventsDays", createDouble(env, summary.average_time_between_events_days));
-    
+
     return obj;
 }
 
@@ -211,11 +205,8 @@ fn analyze_customer_history(env: c.napi_env, info: c.napi_callback_info) callcon
 
     if (argc < 4) return null;
 
-    // _customer_id and _vehicle_id are ignored in Rust logic too, but we might read them
-    // const customer_id = try getString(env, args[0], allocator);
-    // const vehicle_id = try getString(env, args[1], allocator);
     const history_size = getInt32(env, args[2]);
-    
+
     var seed: ?f64 = null;
     if (getType(env, args[3]) == c.napi_number) {
         seed = getDouble(env, args[3]);
@@ -223,10 +214,9 @@ fn analyze_customer_history(env: c.napi_env, info: c.napi_callback_info) callcon
 
     var rng = random.SeededRandom.init(seed);
     const events = history.generateHistory(allocator, @as(u32, @intCast(history_size)), &rng) catch return null;
-    // We don't need to deinit events list explicitly as it's in arena
-    
+
     const summary = analytics.calculateCustomerAnalytics(allocator, events.items) catch return null;
-    
+
     return analyticsSummaryToJs(env, summary);
 }
 
@@ -244,27 +234,23 @@ fn generate_risk_report(env: c.napi_env, info: c.napi_callback_info) callconv(.c
     const vehicle_id = getString(env, args[1], allocator) catch return null;
     const history_size = getInt32(env, args[2]);
     const sim_iterations = getInt32(env, args[3]);
-    
+
     var seed: ?f64 = null;
     if (getType(env, args[4]) == c.napi_number) {
         seed = getDouble(env, args[4]);
     }
-    
+
     const customer = jsToCustomer(env, args[5], allocator) catch return null;
     const vehicle = jsToVehicle(env, args[6], allocator) catch return null;
 
     var rng = random.SeededRandom.init(seed);
 
-    // 1. History
     const events = history.generateHistory(allocator, @as(u32, @intCast(history_size)), &rng) catch return null;
 
-    // 2 & 3. Features
     const features = history.deriveFeatures(events.items, customer, vehicle, &rng);
 
-    // 4. Score
     const score = scoring.calculateScore(features);
 
-    // 5. Simulation
     const sim_res = simulation.monteCarloSimulation(allocator, score, @as(u32, @intCast(sim_iterations)), seed) catch return null;
 
     const report = createObject(env);
@@ -345,10 +331,9 @@ fn calculate_risk_score(env: c.napi_env, info: c.napi_callback_info) callconv(.c
 
     const features = jsToFeatureVector(env, args[0]);
     const score = scoring.calculateScore(features);
-    
+
     return createDouble(env, score);
 }
-
 
 // --- Registration ---
 

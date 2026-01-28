@@ -37,8 +37,7 @@ pub fn generate_history(
             value,
         });
     }
-    
-    // Sort by timestamp
+
     events.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap());
     
     events

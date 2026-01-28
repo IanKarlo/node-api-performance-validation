@@ -19,7 +19,6 @@ export interface LangModelConfig {
 export function getLangModelConfig(): LangModelConfig {
   const model = (process.env.LANG_MODEL as LangModel) || 'TS';
 
-  // Validate model value
   if (model !== 'TS' && model !== 'RS' && model !== 'ZG') {
     console.warn(`Invalid LANG_MODEL value: ${model}. Defaulting to 'TS'`);
     return {
@@ -31,11 +30,9 @@ export function getLangModelConfig(): LangModelConfig {
     };
   }
 
-  // Check Rust availability
   let rustAvailable = false;
   if (model === 'RS') {
     try {
-      // Test if Rust module can be loaded
       require('@native-rust');
       rustAvailable = true;
     } catch (error) {
@@ -44,11 +41,9 @@ export function getLangModelConfig(): LangModelConfig {
     }
   }
 
-  // Check Zig availability
   let zigAvailable = false;
   if (model === 'ZG') {
     try {
-      // Test if Zig module can be loaded
       require('@native-zig');
       zigAvailable = true;
     } catch (error) {
