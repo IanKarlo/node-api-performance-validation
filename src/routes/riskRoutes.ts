@@ -9,6 +9,7 @@ import { SeededRandom } from '../computation/random';
 import { CustomerService } from '../services/customerService';
 import { VehicleService } from '../services/vehicleService';
 import { getLangModelConfig, logLangModelUsage } from '../config/lang-model';
+import { recordComputation, recordBatchItems, getImplementationName } from '../metrics';
 
 let nativeFunctions: any = null;
 const config = getLangModelConfig();
@@ -41,8 +42,13 @@ const batchScoreSchema = z.object({
  * Generate full risk report for a customer/vehicle pair
  */
 router.post('/report', async (req: Request, res: Response) => {
+  const implementation = getImplementationName(config.useRust, config.useZig);
+  let computationStart: bigint | null = null;
+  let body: RiskReportRequest | null = null;
+
   try {
-    const body = riskReportSchema.parse(req.body) as RiskReportRequest;
+    body = riskReportSchema.parse(req.body) as RiskReportRequest;
+    computationStart = process.hrtime.bigint();
 
     const customer = customerService.getCustomer(body.customerId);
     const vehicle = vehicleService.getVehicle(body.vehicleId);
@@ -94,6 +100,11 @@ router.post('/report', async (req: Request, res: Response) => {
       console.error('Error generating risk report:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
+  } finally {
+    if (body && computationStart !== null) {
+      const computationSeconds = Number(process.hrtime.bigint() - computationStart) / 1e9;
+      recordComputation('risk_report', implementation, computationSeconds);
+    }
   }
 });
 
@@ -102,8 +113,13 @@ router.post('/report', async (req: Request, res: Response) => {
  * Calculate risk scores for a batch of profiles
  */
 router.post('/batch-score', async (req: Request, res: Response) => {
+  const implementation = getImplementationName(config.useRust, config.useZig);
+  let computationStart: bigint | null = null;
+  let body: BatchScoreRequest | null = null;
+
   try {
-    const body = batchScoreSchema.parse(req.body) as BatchScoreRequest;
+    body = batchScoreSchema.parse(req.body) as BatchScoreRequest;
+    computationStart = process.hrtime.bigint();
 
     let response: any;
 
@@ -151,6 +167,12 @@ router.post('/batch-score', async (req: Request, res: Response) => {
     } else {
       console.error('Error in batch scoring:', error);
       res.status(500).json({ error: 'Internal server error' });
+    }
+  } finally {
+    if (body && computationStart !== null) {
+      const computationSeconds = Number(process.hrtime.bigint() - computationStart) / 1e9;
+      recordComputation('batch_score', implementation, computationSeconds);
+      recordBatchItems('batch_score', implementation, body.count);
     }
   }
 });

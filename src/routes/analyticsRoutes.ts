@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { generateHistory } from '../computation/history';
 import { calculateCustomerAnalytics } from '../computation/analytics';
 import { getLangModelConfig, logLangModelUsage } from '../config/lang-model';
+import { recordComputation, getImplementationName } from '../metrics';
 
 const router = Router();
 
@@ -10,18 +11,22 @@ const router = Router();
  * Returns analytical summary of customer history
  */
 router.get('/customer/:id/summary', async (req: Request, res: Response) => {
+  let computationStart: bigint | null = null;
+  const customerId = req.params.id;
+
+  if (!customerId) {
+    res.status(400).json({ error: 'Customer ID is required' });
+    return;
+  }
+
+  const config = getLangModelConfig();
+  const implementation = getImplementationName(config.useRust, config.useZig);
+  const vehicleId = `vehicle-${customerId}`;
+  const historySize = 50000;
+
   try {
-    const customerId = req.params.id;
-
-    if (!customerId) {
-      res.status(400).json({ error: 'Customer ID is required' });
-      return;
-    }
-
     logLangModelUsage(req.path);
-    const config = getLangModelConfig();
-    const vehicleId = `vehicle-${customerId}`;
-    const historySize = 50000;
+    computationStart = process.hrtime.bigint();
 
     if (config.useRust || config.useZig) {
       try {
@@ -54,6 +59,11 @@ router.get('/customer/:id/summary', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error generating customer analytics:', error);
     res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    if (computationStart !== null) {
+      const computationSeconds = Number(process.hrtime.bigint() - computationStart) / 1e9;
+      recordComputation('customer_analytics', implementation, computationSeconds);
+    }
   }
 });
 
