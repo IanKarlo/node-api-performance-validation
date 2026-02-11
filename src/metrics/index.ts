@@ -1,9 +1,14 @@
 import client from 'prom-client';
+import { getLangModelConfig } from '../config/lang-model';
 
 const register = new client.Registry();
 
+const config = getLangModelConfig();
+const implementation = getImplementationName(config.useRust, config.useZig);
+
 register.setDefaultLabels({
   app: 'node-api-performance-validation',
+  implementation,
 });
 
 client.collectDefaultMetrics({
