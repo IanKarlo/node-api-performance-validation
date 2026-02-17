@@ -1,6 +1,6 @@
 # Validação de Performance de API Node
 
-API de Análise de Risco e Simulação para validação de performance e benchmarking com implementações em TypeScript e Rust.
+API de Análise de Risco e Simulação para validação de performance e benchmarking com implementações em TypeScript, Rust e Zig.
 
 ## Visão Geral
 
@@ -49,10 +49,11 @@ npm start
 
 ### Seleção do Modelo de Linguagem
 
-A API suporta implementações tanto em TypeScript quanto em Rust para comparação de performance. Use a variável de ambiente `LANG_MODEL` para escolher:
+A API suporta implementações em TypeScript, Rust e Zig para comparação de performance. Use a variável de ambiente `LANG_MODEL` para escolher:
 
 - `LANG_MODEL=TS` (padrão): Usa as implementações TypeScript.
 - `LANG_MODEL=RS`: Usa as implementações Rust (requer o módulo nativo compilado).
+- `LANG_MODEL=ZG`: Usa as implementações Zig (requer o módulo nativo compilado).
 
 ```bash
 # Configurar variável de ambiente e executar
@@ -61,6 +62,42 @@ LANG_MODEL=RS npm run dev
 # Ou use os scripts de conveniência
 npm run dev:rs  # Usar Rust
 npm run dev:ts  # Usar TypeScript (explícito)
+```
+
+### Execução com Docker (imagem local já compilada)
+
+Assumindo que a imagem já foi criada como `test/node-api-validation`:
+
+```bash
+# TypeScript
+docker run --rm -d \
+  --name node-api-ts \
+  -p 3000:3000 \
+  -e LANG_MODEL=TS \
+  -e NODE_ENV=production \
+  test/node-api-validation
+
+# Rust
+docker run --rm -d \
+  --name node-api-rs \
+  -p 3002:3000 \
+  -e LANG_MODEL=RS \
+  -e NODE_ENV=production \
+  test/node-api-validation
+
+# Zig
+docker run --rm -d \
+  --name node-api-zg \
+  -p 3003:3000 \
+  -e LANG_MODEL=ZG \
+  -e NODE_ENV=production \
+  test/node-api-validation
+```
+
+Para parar:
+
+```bash
+docker stop node-api-ts node-api-rs node-api-zg
 ```
 
 ## Endpoints da API
@@ -161,15 +198,16 @@ Retorna um resumo analítico do histórico do cliente.
 
 ## Arquitetura
 
-O sistema segue uma arquitetura modular com implementações tanto em TypeScript quanto em Rust:
+O sistema segue uma arquitetura modular com implementações em TypeScript, Rust e Zig:
 
 - **Camada HTTP** (`src/routes/`): Rotas Express.js e tratamento de requisições.
 - **Camada de Computação** (`src/computation/`): Lógica de negócio central (geração de histórico, derivação de características, pontuação, simulação).
-- **Camada Nativa** (`src/native/rust/`): Implementações Rust de alta performance usando napi-rs.
+- **Camada Nativa Rust** (`src/native/rust/`): Implementações Rust de alta performance usando napi-rs.
+- **Camada Nativa Zig** (`src/native/zig/`): Implementações Zig de alta performance usando Node-API.
 - **Serviços** (`src/services/`): Camada de acesso a dados (atualmente implementações simuladas/mocks).
 - **Tipos** (`src/types/`): Definições de tipo TypeScript.
 
-O design modular permite a alternância contínua entre as implementações TypeScript e Rust para benchmarking de performance.
+O design modular permite a alternância contínua entre as implementações TypeScript, Rust e Zig para benchmarking de performance.
 
 ## Características de Performance
 

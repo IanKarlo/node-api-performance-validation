@@ -1,0 +1,81 @@
+# ============================================================
+# Zig variant — LANG_MODEL=ZG, port 3000
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-zig
+  namespace: node-api-perf
+  labels:
+    app: node-api
+    variant: zig
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: node-api
+      variant: zig
+  template:
+    metadata:
+      labels:
+        app: node-api
+        variant: zig
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: api
+          image: node-api-performance-validation:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            - name: PORT
+              value: "3000"
+            - name: HOST
+              value: "0.0.0.0"
+            - name: LANG_MODEL
+              value: "ZG"
+            - name: NODE_ENV
+              value: "production"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-zig
+  namespace: node-api-perf
+  labels:
+    app: node-api
+    variant: zig
+spec:
+  selector:
+    app: node-api
+    variant: zig
+  ports:
+    - port: 3200
+      targetPort: http
+      protocol: TCP
+      name: http
+  type: ClusterIP

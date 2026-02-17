@@ -1,0 +1,94 @@
+# ============================================================
+# Prometheus — scrapes all three API variants
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: node-api-perf
+  labels:
+    app: prometheus
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 5s
+      evaluation_interval: 5s
+
+    scrape_configs:
+      - job_name: "typescript"
+        metrics_path: /metrics
+        static_configs:
+          - targets: ["api-typescript:3000"]
+            labels:
+              app: "node-api-performance-validation"
+
+      - job_name: "rust"
+        metrics_path: /metrics
+        static_configs:
+          - targets: ["api-rust:3000"]
+            labels:
+              app: "node-api-performance-validation"
+
+      - job_name: "zig"
+        metrics_path: /metrics
+        static_configs:
+          - targets: ["api-zig:3000"]
+            labels:
+              app: "node-api-performance-validation"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: node-api-perf
+  labels:
+    app: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus:latest
+          ports:
+            - containerPort: 9090
+              name: http
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus/prometheus.yml
+              subPath: prometheus.yml
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: node-api-perf
+  labels:
+    app: prometheus
+spec:
+  selector:
+    app: prometheus
+  ports:
+    - port: 9090
+      targetPort: http
+      protocol: TCP
+      name: http
+  type: ClusterIP

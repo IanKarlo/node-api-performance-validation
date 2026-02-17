@@ -1,0 +1,28 @@
+# Build artifacts
+dist/
+node_modules/
+src/native/rust/target/
+src/native/zig/zig-out/
+src/native/zig/zig-cache/
+src/native/zig/.zig-cache/
+src/native/rust/*.node
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# Docker
+Dockerfile
+docker-compose.yml
+
+# Docs
+docs/
+README.md
+*.md
+
+# Yarn
+.yarn/install-state.gz
