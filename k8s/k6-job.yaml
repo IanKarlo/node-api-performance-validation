@@ -1,0 +1,56 @@
+# ============================================================
+# k6 Load Test Job — runs inside the cluster targeting
+# ClusterIP services directly (no ingress needed)
+# ============================================================
+#
+# Usage:
+#   kubectl create configmap k6-test-script \
+#     --from-file=load-test.js=k6/load-test.js \
+#     -n node-api-perf --dry-run=client -o yaml | kubectl apply -f -
+#
+#   kubectl apply -f k8s/k6-job.yaml
+#   kubectl logs -f job/k6-load-test -n node-api-perf
+# ============================================================
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: k6-load-test
+  namespace: node-api-perf
+  labels:
+    app.kubernetes.io/part-of: node-api-performance-validation
+    app.kubernetes.io/component: load-test
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: k6-load-test
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: k6
+          image: grafana/k6:latest
+          command: ['k6', 'run', '/scripts/load-test.js']
+          env:
+            - name: BASE_URL_TS
+              value: 'http://api-typescript.node-api-perf.svc.cluster.local:3000'
+            - name: BASE_URL_RS
+              value: 'http://api-rust.node-api-perf.svc.cluster.local:3100'
+            - name: BASE_URL_ZG
+              value: 'http://api-zig.node-api-perf.svc.cluster.local:3200'
+          volumeMounts:
+            - name: k6-scripts
+              mountPath: /scripts
+              readOnly: true
+          resources:
+            requests:
+              cpu: 500m
+              memory: 256Mi
+            limits:
+              cpu: '1'
+              memory: 512Mi
+      volumes:
+        - name: k6-scripts
+          configMap:
+            name: k6-test-script
