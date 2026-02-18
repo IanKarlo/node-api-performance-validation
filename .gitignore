@@ -16,3 +16,10 @@ target/
 .zig-cache/
 .zig-out/
 zig-out/
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+crash.log
+crash.*.log
+docs/

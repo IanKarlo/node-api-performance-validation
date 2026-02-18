@@ -1,0 +1,10 @@
+# Required
+# Set your DO token via environment for better security:
+# export TF_VAR_do_token="dop_v1_xxx"
+
+# Optional overrides
+region              = "nyc1"
+cluster_name        = "node-api-perf-cluster"
+kubernetes_version  = "1.31.1-do.3"
+node_size           = "s-2vcpu-4gb"
+node_count          = 2

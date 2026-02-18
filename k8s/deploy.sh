@@ -21,9 +21,6 @@ if [[ "$ACTION" == "apply" ]]; then
   kubectl "$ACTION" -f "$SCRIPT_DIR/prometheus.yaml"
   kubectl "$ACTION" -f "$SCRIPT_DIR/grafana.yaml"
 
-  echo "==> Deploying ingress..."
-  kubectl "$ACTION" -f "$SCRIPT_DIR/ingress.yaml"
-
   echo ""
   echo "Deployment complete! Check status with:"
   echo "  kubectl get all -n node-api-perf"
