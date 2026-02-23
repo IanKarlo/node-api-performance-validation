@@ -39,6 +39,13 @@ const httpErrorsTotal = new client.Counter({
   registers: [register],
 });
 
+const httpTransportErrorsTotal = new client.Counter({
+  name: 'http_transport_errors_total',
+  help: 'Total number of transport-level HTTP failures (connection reset/aborted before response completion)',
+  labelNames: ['method', 'endpoint', 'error_type', 'implementation'],
+  registers: [register],
+});
+
 const apiSuccessTotal = new client.Counter({
   name: 'api_success_total',
   help: 'Total number of successful API responses',
@@ -66,6 +73,7 @@ export {
   httpRequestsTotal,
   httpRequestDuration,
   httpErrorsTotal,
+  httpTransportErrorsTotal,
   apiSuccessTotal,
   computationDuration,
   batchItemsProcessed,
@@ -96,6 +104,15 @@ export function recordError(
   implementation: string
 ): void {
   httpErrorsTotal.labels(method, endpoint, errorType, implementation).inc();
+}
+
+export function recordTransportError(
+  method: string,
+  endpoint: string,
+  errorType: string,
+  implementation: string
+): void {
+  httpTransportErrorsTotal.labels(method, endpoint, errorType, implementation).inc();
 }
 
 export function recordSuccess(endpoint: string, implementation: string): void {

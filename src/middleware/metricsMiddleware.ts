@@ -3,6 +3,7 @@ import {
   recordRequest,
   recordDuration,
   recordError,
+  recordTransportError,
   recordSuccess,
   getImplementationName,
 } from '../metrics';
@@ -18,8 +19,11 @@ export function metricsMiddleware(req: Request, res: Response, next: NextFunctio
   const config = getLangModelConfig();
   const implementation = getImplementationName(config.useRust, config.useZig);
   const normalizedEndpoint = normalizeEndpoint(req.path);
+  let requestFinalized = false;
 
   res.on('finish', () => {
+    requestFinalized = true;
+
     const endTime = process.hrtime.bigint();
     const durationSeconds = Number(endTime - startTime) / 1e9;
 
@@ -32,6 +36,17 @@ export function metricsMiddleware(req: Request, res: Response, next: NextFunctio
       const errorType = res.statusCode >= 500 ? 'server_error' : 'client_error';
       recordError(req.method, normalizedEndpoint, errorType, implementation);
     }
+  });
+
+  res.on('close', () => {
+    if (requestFinalized) {
+      return;
+    }
+
+    requestFinalized = true;
+
+    const errorType = req.aborted ? 'request_aborted' : 'connection_closed';
+    recordTransportError(req.method, normalizedEndpoint, errorType, implementation);
   });
 
   next();
