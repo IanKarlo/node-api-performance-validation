@@ -1,0 +1,34 @@
+services:
+  prometheus-replay:
+    image: prom/prometheus:latest
+    container_name: prometheus-replay
+    user: "0:0"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    ports:
+      - "9092:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ${PROM_EXPORT_DIR:?Set PROM_EXPORT_DIR to your exported tsdb-data path}:/prometheus
+    restart: unless-stopped
+
+  grafana-replay:
+    image: grafana/grafana:latest
+    container_name: grafana-replay
+    ports:
+      - "3002:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    volumes:
+      - grafana-replay-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus-replay
+    restart: unless-stopped
+
+volumes:
+  grafana-replay-data:

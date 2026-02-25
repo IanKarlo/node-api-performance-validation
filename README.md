@@ -214,3 +214,40 @@ O design modular permite a alternância contínua entre as implementações Type
 - **Intensivo em Memória:** Operações de geração e agregação de histórico.
 - **Intensivo em CPU:** Operações de simulação Monte Carlo e pontuação em lote.
 - **Escalável:** Projetado para lidar com grandes cargas de trabalho (até 1M eventos, 10M iterações de simulação).
+
+## Runner de Experimentos k6 (Kubernetes)
+
+Para executar os cenários experimentais por combinação (cenário × endpoint), com as variantes definidas em `VARIANTS` executando em paralelo no mesmo job k6:
+
+```bash
+./k8s/run-k6-experiments.sh
+```
+
+Variáveis úteis:
+
+- `REPETITIONS` (3-5, padrão `3`)
+- `SCENARIOS` (padrão `pico,rampa,resistencia`)
+- `VARIANTS` (padrão `ts,rs,zg`)
+- `ENDPOINTS` (padrão `risk_report_small,risk_report_medium,risk_report_big,batch_score,analytics_summary`)
+- `NAMESPACE` (padrão `node-api-perf`)
+- `RESTART_DEPLOYMENTS` (`true`/`false`, padrão `true`)
+
+Exemplo (somente rampa para Rust no endpoint de batch):
+
+```bash
+SCENARIOS=rampa VARIANTS=rs ENDPOINTS=batch_score ./k8s/run-k6-experiments.sh
+```
+
+Exemplo (TypeScript, Rust e Zig em paralelo para o endpoint de batch):
+
+```bash
+SCENARIOS=rampa VARIANTS=ts,rs,zg ENDPOINTS=batch_score ./k8s/run-k6-experiments.sh
+```
+
+Exemplo com 3 repetições:
+
+```bash
+REPETITIONS=3 SCENARIOS=rampa VARIANTS=ts,rs,zg ENDPOINTS=batch_score ./k8s/run-k6-experiments.sh
+```
+
+Cada execução salva dois artefatos em `docs/k6-experiments/<timestamp>/`: log (`.log`) e resumo estruturado do k6 (`.summary.json`).

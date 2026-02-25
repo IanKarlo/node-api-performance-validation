@@ -8,17 +8,99 @@ const BASE_URL_TS = __ENV.BASE_URL_TS || 'http://localhost:3000';
 const BASE_URL_RS = __ENV.BASE_URL_RS || 'http://localhost:3100';
 const BASE_URL_ZG = __ENV.BASE_URL_ZG || 'http://localhost:3200';
 
-const ROUTE_DURATION_MINUTES = 4;
-const REST_DURATION_MINUTES = 2;
-const VUS_PER_VARIANT = 20;
+const ENDPOINT_EXECUTORS = {
+  risk_report_small: 'runRiskReportSmall',
+  risk_report_medium: 'runRiskReportMedium',
+  risk_report_big: 'runRiskReportBig',
+  batch_score: 'runBatchScore',
+  analytics_summary: 'runAnalyticsSummary',
+};
 
-const ROUTE_PHASES = [
-  { name: 'risk_report_small', exec: 'runRiskReportSmall' },
-  { name: 'risk_report_medium', exec: 'runRiskReportMedium' },
-  { name: 'risk_report_big', exec: 'runRiskReportBig' },
-  { name: 'batch_score', exec: 'runBatchScore' },
-  { name: 'analytics_summary', exec: 'runAnalyticsSummary' },
-];
+const BASE_URLS_BY_VARIANT = {
+  ts: BASE_URL_TS,
+  rs: BASE_URL_RS,
+  zg: BASE_URL_ZG,
+};
+
+const SCENARIO_ALIASES = {
+  pico: 'pico',
+  peak: 'pico',
+  rampa: 'rampa',
+  ramp: 'rampa',
+  resistencia: 'resistencia',
+  endurance: 'resistencia',
+  soak: 'resistencia',
+};
+
+const SCENARIO_PROFILES = {
+  pico: {
+    executor: 'ramping-vus',
+    startVUs: 0,
+    stages: [
+      { duration: '10s', target: 40 },
+      { duration: '2m', target: 40 },
+      { duration: '10s', target: 0 },
+    ],
+    gracefulRampDown: '20s',
+  },
+  rampa: {
+    executor: 'ramping-vus',
+    startVUs: 0,
+    stages: [
+      { duration: '1m', target: 10 },
+      { duration: '1m', target: 20 },
+      { duration: '1m', target: 30 },
+      { duration: '1m', target: 40 },
+      { duration: '1m', target: 0 },
+    ],
+    gracefulRampDown: '30s',
+  },
+  resistencia: {
+    executor: 'constant-vus',
+    vus: 20,
+    duration: '12m',
+    gracefulStop: '30s',
+  },
+};
+
+function parseList(value, fallbackValues) {
+  if (!value || value.toLowerCase() === 'all') {
+    return fallbackValues;
+  }
+
+  return value
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function normalizeScenario(value) {
+  const normalized = SCENARIO_ALIASES[(value || '').toLowerCase()];
+  return normalized || 'rampa';
+}
+
+function uniqueValid(values, validValues) {
+  const validSet = new Set(validValues);
+  const unique = [];
+
+  for (const value of values) {
+    if (validSet.has(value) && !unique.includes(value)) {
+      unique.push(value);
+    }
+  }
+
+  return unique;
+}
+
+const SELECTED_SCENARIO = normalizeScenario(__ENV.LOAD_SCENARIO || __ENV.SCENARIO || 'rampa');
+const SELECTED_VARIANTS = uniqueValid(
+  parseList(__ENV.TEST_VARIANTS || __ENV.TEST_VARIANT || 'all', Object.keys(BASE_URLS_BY_VARIANT)),
+  Object.keys(BASE_URLS_BY_VARIANT)
+);
+const SELECTED_ENDPOINTS = uniqueValid(
+  parseList(__ENV.TEST_ENDPOINTS || __ENV.TEST_ENDPOINT || 'all', Object.keys(ENDPOINT_EXECUTORS)),
+  Object.keys(ENDPOINT_EXECUTORS)
+);
 
 function jsonParams(endpoint) {
   return {
@@ -33,82 +115,55 @@ function getParams(endpoint) {
   };
 }
 
-function phaseStartTime(phaseIndex) {
-  return `${phaseIndex * (ROUTE_DURATION_MINUTES + REST_DURATION_MINUTES)}m`;
-}
+function buildScenario(variant, endpoint, loadScenario) {
+  const profile = SCENARIO_PROFILES[loadScenario];
+  const baseUrl = BASE_URLS_BY_VARIANT[variant];
 
-function buildScenario(variant, baseUrl, phase, phaseIndex) {
   return {
-    executor: 'constant-vus',
-    vus: VUS_PER_VARIANT,
-    duration: `${ROUTE_DURATION_MINUTES}m`,
-    startTime: phaseStartTime(phaseIndex),
-    gracefulStop: '30s',
-    tags: { variant },
+    ...profile,
+    exec: ENDPOINT_EXECUTORS[endpoint],
+    tags: {
+      variant,
+      endpoint,
+      load_scenario: loadScenario,
+    },
     env: { VARIANT_URL: baseUrl },
-    exec: phase.exec,
   };
 }
 
-function buildScenariosForVariant(variant, baseUrl) {
-  const variantScenarios = {};
+function buildScenarios(variants, endpoints, loadScenario) {
+  const scenarios = {};
 
-  for (let phaseIndex = 0; phaseIndex < ROUTE_PHASES.length; phaseIndex += 1) {
-    const phase = ROUTE_PHASES[phaseIndex];
-    const scenarioName = `${variant}_${phase.name}`;
-    variantScenarios[scenarioName] = buildScenario(variant, baseUrl, phase, phaseIndex);
+  for (const variant of variants) {
+    for (const endpoint of endpoints) {
+      const scenarioName = `${variant}_${endpoint}_${loadScenario}`;
+      scenarios[scenarioName] = buildScenario(variant, endpoint, loadScenario);
+    }
   }
 
-  return variantScenarios;
+  return scenarios;
+}
+
+function buildThresholds(variants, endpoints, loadScenario) {
+  const thresholds = {};
+
+  for (const variant of variants) {
+    for (const endpoint of endpoints) {
+      const tags = `variant:${variant},endpoint:${endpoint},load_scenario:${loadScenario}`;
+      thresholds[`http_req_duration{${tags}}`] = ['p(95)<500'];
+      thresholds[`http_req_failed{${tags}}`] = ['rate<0.01'];
+    }
+  }
+
+  return thresholds;
 }
 
 // ---------------------------------------------------------------------------
-// Scenarios — endpoint-isolated phases with cooldown windows
+// Scenarios — experimental load profiles (pico, rampa, resistencia)
 // ---------------------------------------------------------------------------
 export const options = {
-  scenarios: {
-    ...buildScenariosForVariant('ts', BASE_URL_TS),
-    ...buildScenariosForVariant('rs', BASE_URL_RS),
-    ...buildScenariosForVariant('zg', BASE_URL_ZG),
-  },
-
-  thresholds: {
-    'http_req_duration{variant:ts,endpoint:risk_report_small}': ['p(95)<500'],
-    'http_req_duration{variant:ts,endpoint:risk_report_medium}': ['p(95)<500'],
-    'http_req_duration{variant:ts,endpoint:risk_report_big}': ['p(95)<500'],
-    'http_req_duration{variant:ts,endpoint:batch_score}': ['p(95)<500'],
-    'http_req_duration{variant:ts,endpoint:analytics_summary}': ['p(95)<500'],
-
-    'http_req_duration{variant:rs,endpoint:risk_report_small}': ['p(95)<500'],
-    'http_req_duration{variant:rs,endpoint:risk_report_medium}': ['p(95)<500'],
-    'http_req_duration{variant:rs,endpoint:risk_report_big}': ['p(95)<500'],
-    'http_req_duration{variant:rs,endpoint:batch_score}': ['p(95)<500'],
-    'http_req_duration{variant:rs,endpoint:analytics_summary}': ['p(95)<500'],
-
-    'http_req_duration{variant:zg,endpoint:risk_report_small}': ['p(95)<500'],
-    'http_req_duration{variant:zg,endpoint:risk_report_medium}': ['p(95)<500'],
-    'http_req_duration{variant:zg,endpoint:risk_report_big}': ['p(95)<500'],
-    'http_req_duration{variant:zg,endpoint:batch_score}': ['p(95)<500'],
-    'http_req_duration{variant:zg,endpoint:analytics_summary}': ['p(95)<500'],
-
-    'http_req_failed{variant:ts,endpoint:risk_report_small}': ['rate<0.01'],
-    'http_req_failed{variant:ts,endpoint:risk_report_medium}': ['rate<0.01'],
-    'http_req_failed{variant:ts,endpoint:risk_report_big}': ['rate<0.01'],
-    'http_req_failed{variant:ts,endpoint:batch_score}': ['rate<0.01'],
-    'http_req_failed{variant:ts,endpoint:analytics_summary}': ['rate<0.01'],
-
-    'http_req_failed{variant:rs,endpoint:risk_report_small}': ['rate<0.01'],
-    'http_req_failed{variant:rs,endpoint:risk_report_medium}': ['rate<0.01'],
-    'http_req_failed{variant:rs,endpoint:risk_report_big}': ['rate<0.01'],
-    'http_req_failed{variant:rs,endpoint:batch_score}': ['rate<0.01'],
-    'http_req_failed{variant:rs,endpoint:analytics_summary}': ['rate<0.01'],
-
-    'http_req_failed{variant:zg,endpoint:risk_report_small}': ['rate<0.01'],
-    'http_req_failed{variant:zg,endpoint:risk_report_medium}': ['rate<0.01'],
-    'http_req_failed{variant:zg,endpoint:risk_report_big}': ['rate<0.01'],
-    'http_req_failed{variant:zg,endpoint:batch_score}': ['rate<0.01'],
-    'http_req_failed{variant:zg,endpoint:analytics_summary}': ['rate<0.01'],
-  },
+  scenarios: buildScenarios(SELECTED_VARIANTS, SELECTED_ENDPOINTS, SELECTED_SCENARIO),
+  thresholds: buildThresholds(SELECTED_VARIANTS, SELECTED_ENDPOINTS, SELECTED_SCENARIO),
 };
 
 // ---------------------------------------------------------------------------
