@@ -1,5 +1,6 @@
 import http from 'k6/http';
 import { check, group } from 'k6';
+import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -194,7 +195,7 @@ const RISK_REPORT_BIG = JSON.stringify({
 });
 
 const BATCH_SCORE = JSON.stringify({
-  count: 1000,
+  count: 10000,
   seed: 42,
 });
 
@@ -265,4 +266,13 @@ export function runAnalyticsSummary() {
       'analytics summary: status 200': (r) => r.status === 200,
     });
   });
+}
+
+export function handleSummary(data) {
+  const summaryPath = __ENV.K6_SUMMARY_PATH || 'summary.json';
+
+  return {
+    stdout: textSummary(data, { indent: ' ', enableColors: true }),
+    [summaryPath]: JSON.stringify(data, null, 2),
+  };
 }
