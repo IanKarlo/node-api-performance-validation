@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: perf-analysis-pg
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: perf
+      POSTGRES_PASSWORD: perf
+      POSTGRES_DB: perf_analysis
+    volumes:
+      - perf-pg-data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    restart: unless-stopped
+
+volumes:
+  perf-pg-data:
