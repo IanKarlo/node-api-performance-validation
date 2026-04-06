@@ -149,7 +149,7 @@ O design modular permite a alternância contínua entre as implementações Type
 
 ## Guias de Execução
 
-Guias detalhados (em português) para cada etapa do projeto estão disponíveis em [`guias/`](guias/):
+Guias detalhados para cada etapa do projeto estão disponíveis em [`guias/`](guias/):
 
 1. [Desenvolvimento Local](guias/01-desenvolvimento-local.md)
 2. [Docker Local](guias/02-docker-local.md)
