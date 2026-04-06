@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# ============================================================
+# Run k6 experiment suite against the cluster.
+# Requires KUBECONFIG to be set if not using the default context.
+#   export KUBECONFIG=~/.kube/node-api-perf.yaml
+# ============================================================
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -43,6 +48,75 @@ kubectl create configmap k6-test-script \
 IFS=',' read -r -a SCENARIO_ARRAY <<< "$SCENARIOS"
 IFS=',' read -r -a ENDPOINT_ARRAY <<< "$ENDPOINTS"
 
+# -----------------------------------------------------------------------
+# Pod health snapshot — captures restart counts, status, and termination
+# reason for each API pod. Output is a JSON array.
+# Uses python3 for JSON processing (available everywhere, no jq needed).
+# -----------------------------------------------------------------------
+snapshot_pods() {
+  kubectl get pods -n "$NAMESPACE" -l app=node-api -o json 2>/dev/null \
+    | python3 -c '
+import sys, json
+data = json.load(sys.stdin)
+result = []
+for pod in data.get("items", []):
+    cs = (pod.get("status", {}).get("containerStatuses") or [{}])[0]
+    terminated = (cs.get("lastState", {}).get("terminated"))
+    last_term = None
+    if terminated:
+        last_term = {
+            "reason": terminated.get("reason", ""),
+            "exit_code": terminated.get("exitCode", 0),
+            "finished_at": terminated.get("finishedAt", "")
+        }
+    ready_conds = [c for c in pod.get("status", {}).get("conditions", []) if c.get("type") == "Ready"]
+    result.append({
+        "pod": pod["metadata"]["name"],
+        "variant": pod["metadata"].get("labels", {}).get("variant", ""),
+        "phase": pod.get("status", {}).get("phase", ""),
+        "ready": ready_conds[0].get("status") == "True" if ready_conds else False,
+        "restarts": cs.get("restartCount", 0),
+        "last_termination": last_term
+    })
+json.dump(result, sys.stdout)
+' 2>/dev/null || echo '[]'
+}
+
+# -----------------------------------------------------------------------
+# Collect Kubernetes events for API pods within a time window
+# -----------------------------------------------------------------------
+collect_pod_events() {
+  local since="$1"
+  kubectl get events -n "$NAMESPACE" \
+    --field-selector "involvedObject.kind=Pod" \
+    --sort-by='.lastTimestamp' \
+    -o json 2>/dev/null \
+    | python3 -c '
+import sys, json
+since = sys.argv[1]
+data = json.load(sys.stdin)
+result = []
+for ev in data.get("items", []):
+    pod_name = ev.get("involvedObject", {}).get("name", "")
+    if not pod_name.startswith("api-"):
+        continue
+    last_seen = ev.get("lastTimestamp") or ev.get("eventTime") or ""
+    first_seen = ev.get("firstTimestamp") or ev.get("eventTime") or ""
+    if last_seen < since and first_seen < since:
+        continue
+    result.append({
+        "pod": pod_name,
+        "reason": ev.get("reason", ""),
+        "message": ev.get("message", ""),
+        "type": ev.get("type", ""),
+        "count": ev.get("count", 0),
+        "first_seen": first_seen,
+        "last_seen": last_seen
+    })
+json.dump(result, sys.stdout)
+' "$since" 2>/dev/null || echo '[]'
+}
+
 restart_api_deployments() {
   if [[ "$RESTART_DEPLOYMENTS" != "true" ]]; then
     return 0
@@ -65,10 +139,17 @@ run_one() {
   local run_job_name
   local job_failed="false"
 
+  local start_utc
+  local end_utc
+
   echo ""
   echo "=== Running: scenario=$scenario variants=$VARIANTS endpoint=$endpoint repetition=$repetition ==="
 
   restart_api_deployments
+
+  start_utc="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  local pods_before
+  pods_before="$(snapshot_pods)"
 
   run_job_name="${JOB_NAME}-${scenario}-${endpoint}-rep${repetition}-$(date +%s)"
   run_job_name="$(echo "$run_job_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9.-]/-/g; s/--*/-/g; s/^[^a-z0-9]*//; s/[^a-z0-9]*$//')"
@@ -103,7 +184,7 @@ spec:
             - |
               set -e
               exit_code=0
-              k6 run --summary-export=/results/summary.json /scripts/load-test.js || exit_code=\$?
+              k6 run /scripts/load-test.js || exit_code=\$?
               printf "__K6_SUMMARY_JSON_START__\n"
               cat /results/summary.json || true
               printf "\n__K6_SUMMARY_JSON_END__\n"
@@ -125,6 +206,8 @@ spec:
               value: '${VARIANTS}'
             - name: TEST_ENDPOINTS
               value: '${endpoint}'
+            - name: K6_SUMMARY_PATH
+              value: '/results/summary.json'
           volumeMounts:
             - name: k6-scripts
               mountPath: /scripts
@@ -169,6 +252,70 @@ EOF
     rm -f "$summary_file"
     echo "Warning: failed to extract summary.json from job logs ($run_job_name)" >&2
   fi
+
+  end_utc="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  local pods_after
+  pods_after="$(snapshot_pods)"
+  local pod_events
+  pod_events="$(collect_pod_events "$start_utc")"
+
+  local pods_file="${file_prefix}.pods.json"
+  python3 -c '
+import json, sys
+before = json.loads(sys.argv[1])
+after = json.loads(sys.argv[2])
+events = json.loads(sys.argv[3])
+start = sys.argv[4]
+end = sys.argv[5]
+
+before_map = {p["pod"]: p for p in before}
+restarts = []
+for a in after:
+    b = before_map.get(a["pod"])
+    if b and a["restarts"] > b["restarts"]:
+        restarts.append({
+            "pod": a["pod"],
+            "variant": a["variant"],
+            "restarts_before": b["restarts"],
+            "restarts_after": a["restarts"],
+            "restarts_added": a["restarts"] - b["restarts"],
+            "last_termination": a["last_termination"]
+        })
+
+json.dump({
+    "test_window": {"start": start, "end": end},
+    "pods_before": before,
+    "pods_after": after,
+    "restarts_during_test": restarts,
+    "events": events
+}, sys.stdout, indent=2)
+' "$pods_before" "$pods_after" "$pod_events" "$start_utc" "$end_utc" > "$pods_file" 2>/dev/null || {
+    cat > "$pods_file" <<PODEOF
+{
+  "test_window": { "start": "${start_utc}", "end": "${end_utc}" },
+  "pods_before": ${pods_before},
+  "pods_after": ${pods_after},
+  "events": ${pod_events}
+}
+PODEOF
+  }
+  echo "Saved pod info: $pods_file"
+
+  local meta_file="${file_prefix}.meta.json"
+  cat > "$meta_file" <<METAEOF
+{
+  "scenario": "${scenario}",
+  "variants": "${VARIANTS}",
+  "endpoint": "${endpoint}",
+  "repetition": ${repetition},
+  "start_utc": "${start_utc}",
+  "end_utc": "${end_utc}",
+  "job_name": "${run_job_name}",
+  "job_failed": ${job_failed}
+}
+METAEOF
+  echo "Saved metadata: $meta_file"
 
   if [[ "$CLEANUP_FINISHED_JOBS" == "true" ]]; then
     kubectl delete job "$run_job_name" -n "$NAMESPACE" --ignore-not-found=true --wait=false >/dev/null 2>&1 || true

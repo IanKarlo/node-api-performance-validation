@@ -31,7 +31,7 @@ spec:
       containers:
         - name: k6
           image: grafana/k6:latest
-          command: ['sh', '-c', 'k6 run --summary-export=/results/summary.json /scripts/load-test.js']
+          command: ['sh', '-c', 'k6 run /scripts/load-test.js']
           env:
             - name: BASE_URL_TS
               value: 'http://api-typescript.node-api-perf.svc.cluster.local:3000'
@@ -45,6 +45,8 @@ spec:
               value: 'all'
             - name: TEST_ENDPOINTS
               value: 'all'
+            - name: K6_SUMMARY_PATH
+              value: '/results/summary.json'
           volumeMounts:
             - name: k6-scripts
               mountPath: /scripts
