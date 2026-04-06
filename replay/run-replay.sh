@@ -9,20 +9,27 @@ ACTION="${1:-up}"
 EXPORT_PATH_INPUT="${2:-}"
 
 resolve_export_path() {
+  local base_path
+
   if [[ -n "$EXPORT_PATH_INPUT" ]]; then
-    echo "$EXPORT_PATH_INPUT"
-    return 0
+    base_path="$EXPORT_PATH_INPUT"
+  else
+    local latest
+    latest="$(ls -1d "$ROOT_DIR"/exports/prometheus/* 2>/dev/null | sort | tail -n 1 || true)"
+    if [[ -z "$latest" ]]; then
+      echo "No export found under $ROOT_DIR/exports/prometheus" >&2
+      echo "Run with an explicit path: ./replay/run-replay.sh up /absolute/path/to/tsdb-data" >&2
+      return 1
+    fi
+    base_path="$latest/tsdb-data"
   fi
 
-  local latest
-  latest="$(ls -1d "$ROOT_DIR"/exports/prometheus/* 2>/dev/null | sort | tail -n 1 || true)"
-  if [[ -z "$latest" ]]; then
-    echo "No export found under $ROOT_DIR/exports/prometheus" >&2
-    echo "Run with an explicit path: ./replay/run-replay.sh up /absolute/path/to/tsdb-data" >&2
-    return 1
+  # Newer Prometheus versions store blocks inside a data/ subdirectory
+  if [[ -d "$base_path/data" ]] && ls "$base_path/data"/01* >/dev/null 2>&1; then
+    echo "$base_path/data"
+  else
+    echo "$base_path"
   fi
-
-  echo "$latest/tsdb-data"
 }
 
 run_compose() {
