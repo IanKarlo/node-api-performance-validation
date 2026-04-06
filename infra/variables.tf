@@ -17,9 +17,9 @@ variable "cluster_name" {
 }
 
 variable "kubernetes_version" {
-  description = "DOKS Kubernetes version (slug, ex: 1.34.1-do.4"
+  description = "Optional DOKS Kubernetes version slug (example: 1.35.1-do.0). Leave empty to auto-select latest available."
   type        = string
-  default     = "1.34.1-do.4"
+  default     = ""
 }
 
 variable "node_pool_name" {
