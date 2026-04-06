@@ -15,90 +15,22 @@ Esta API fornece mecanismos de análise de risco e simulação para clientes e v
 - **Análise (Analytics):** Gera resumos analíticos do histórico do cliente.
 - **Processamento em Lote:** Calcula pontuações de risco para grandes lotes de perfis.
 
-## Instalação
+## Quick Start
 
 ```bash
-npm install
+# Instalar dependências
+yarn install
+
+# Build completo (TypeScript + Rust + Zig)
+yarn build
+
+# Executar em modo de desenvolvimento
+yarn dev:ts   # TypeScript (porta 3000)
+yarn dev:rs   # Rust (porta 3100)
+yarn dev:zg   # Zig (porta 3200)
 ```
 
-## Build (Compilação)
-
-```bash
-# Compilar ambas as implementações TypeScript e Rust
-npm run build
-
-# Compilar apenas o módulo nativo Rust
-npm run native:build
-```
-
-## Execução
-
-```bash
-# Modo de desenvolvimento (com ts-node)
-npm run dev
-
-# Desenvolvimento com a implementação TypeScript (padrão)
-npm run dev:ts
-
-# Desenvolvimento com a implementação Rust
-npm run dev:rs
-
-# Modo de produção (após a compilação)
-npm start
-```
-
-### Seleção do Modelo de Linguagem
-
-A API suporta implementações em TypeScript, Rust e Zig para comparação de performance. Use a variável de ambiente `LANG_MODEL` para escolher:
-
-- `LANG_MODEL=TS` (padrão): Usa as implementações TypeScript.
-- `LANG_MODEL=RS`: Usa as implementações Rust (requer o módulo nativo compilado).
-- `LANG_MODEL=ZG`: Usa as implementações Zig (requer o módulo nativo compilado).
-
-```bash
-# Configurar variável de ambiente e executar
-LANG_MODEL=RS npm run dev
-
-# Ou use os scripts de conveniência
-npm run dev:rs  # Usar Rust
-npm run dev:ts  # Usar TypeScript (explícito)
-```
-
-### Execução com Docker (imagem local já compilada)
-
-Assumindo que a imagem já foi criada como `test/node-api-validation`:
-
-```bash
-# TypeScript
-docker run --rm -d \
-  --name node-api-ts \
-  -p 3000:3000 \
-  -e LANG_MODEL=TS \
-  -e NODE_ENV=production \
-  test/node-api-validation
-
-# Rust
-docker run --rm -d \
-  --name node-api-rs \
-  -p 3002:3000 \
-  -e LANG_MODEL=RS \
-  -e NODE_ENV=production \
-  test/node-api-validation
-
-# Zig
-docker run --rm -d \
-  --name node-api-zg \
-  -p 3003:3000 \
-  -e LANG_MODEL=ZG \
-  -e NODE_ENV=production \
-  test/node-api-validation
-```
-
-Para parar:
-
-```bash
-docker stop node-api-ts node-api-rs node-api-zg
-```
+Use a variável de ambiente `LANG_MODEL` para escolher a implementação: `TS` (padrão), `RS` ou `ZG`.
 
 ## Endpoints da API
 
@@ -215,39 +147,15 @@ O design modular permite a alternância contínua entre as implementações Type
 - **Intensivo em CPU:** Operações de simulação Monte Carlo e pontuação em lote.
 - **Escalável:** Projetado para lidar com grandes cargas de trabalho (até 1M eventos, 10M iterações de simulação).
 
-## Runner de Experimentos k6 (Kubernetes)
+## Guias de Execução
 
-Para executar os cenários experimentais por combinação (cenário × endpoint), com as variantes definidas em `VARIANTS` executando em paralelo no mesmo job k6:
+Guias detalhados (em português) para cada etapa do projeto estão disponíveis em [`guias/`](guias/):
 
-```bash
-./k8s/run-k6-experiments.sh
-```
-
-Variáveis úteis:
-
-- `REPETITIONS` (3-5, padrão `3`)
-- `SCENARIOS` (padrão `pico,rampa,resistencia`)
-- `VARIANTS` (padrão `ts,rs,zg`)
-- `ENDPOINTS` (padrão `risk_report_small,risk_report_medium,risk_report_big,batch_score,analytics_summary`)
-- `NAMESPACE` (padrão `node-api-perf`)
-- `RESTART_DEPLOYMENTS` (`true`/`false`, padrão `true`)
-
-Exemplo (somente rampa para Rust no endpoint de batch):
-
-```bash
-SCENARIOS=rampa VARIANTS=rs ENDPOINTS=batch_score ./k8s/run-k6-experiments.sh
-```
-
-Exemplo (TypeScript, Rust e Zig em paralelo para o endpoint de batch):
-
-```bash
-SCENARIOS=rampa VARIANTS=ts,rs,zg ENDPOINTS=batch_score ./k8s/run-k6-experiments.sh
-```
-
-Exemplo com 3 repetições:
-
-```bash
-REPETITIONS=3 SCENARIOS=rampa VARIANTS=ts,rs,zg ENDPOINTS=batch_score ./k8s/run-k6-experiments.sh
-```
-
-Cada execução salva dois artefatos em `docs/k6-experiments/<timestamp>/`: log (`.log`) e resumo estruturado do k6 (`.summary.json`).
+1. [Desenvolvimento Local](guias/01-desenvolvimento-local.md)
+2. [Docker Local](guias/02-docker-local.md)
+3. [Infraestrutura Terraform (DigitalOcean)](guias/03-infraestrutura-terraform.md)
+4. [Deploy no Kubernetes](guias/04-deploy-kubernetes.md)
+5. [Testes de Carga (k6)](guias/05-testes-carga-k6.md)
+6. [Exportação de Métricas](guias/06-exportacao-metricas.md)
+7. [Replay de Métricas](guias/07-replay-metricas.md)
+8. [Análise de Dados (ETL + PostgreSQL)](guias/08-analise-dados.md)
