@@ -159,3 +159,7 @@ Guias detalhados para cada etapa do projeto estão disponíveis em [`guias/`](gu
 6. [Exportação de Métricas](guias/06-exportacao-metricas.md)
 7. [Replay de Métricas](guias/07-replay-metricas.md)
 8. [Análise de Dados (ETL + PostgreSQL)](guias/08-analise-dados.md)
+
+## Dataset
+
+O dump PostgreSQL com os resultados completos dos experimentos está versionado em [`analysis/dump/perf_analysis.dump`](analysis/dump/perf_analysis.dump). Consulte [`analysis/DATASET.md`](analysis/DATASET.md) para a descrição do schema e instruções de restauração.
